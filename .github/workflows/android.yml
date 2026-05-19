@@ -34,14 +34,19 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar los 10 Tonos Forzando Minúsculas
+      - name: Inyectar y Corregir Nombres de Audios a la Fuerza
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
+          
+          # Buscamos CUALQUIER archivo de audio sin importar cómo esté escrito
+          count=1
           for f in *.[mM][pP]3; do
-            if [ -f "$f" ]; then
-              filename=$(echo "$f" | tr '[:upper:]' '[:lower:]')
-              cp "$f" "../android/app/src/main/res/raw/$filename"
+            if [ -f "$f" ] && [ $count -le 10 ]; then
+              # Forzamos que se guarde como alarma1.mp3, alarma2.mp3... solucionando errores de letras faltantes o mayúsculas
+              cp "$f" "../android/app/src/main/res/raw/alarma$count.mp3"
+              echo "Corregido e Inyectado: $f -> alarma$count.mp3"
+              count=$((count+1))
             fi
           done
           cd ..
@@ -49,7 +54,6 @@ jobs:
       - name: Inyectar Permisos Críticos en AndroidManifest
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          # Insertar los permisos necesarios para alarmas exactas y vibración antes de la etiqueta <application>
           sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
 
       - name: Forzar Sincronización Completa
