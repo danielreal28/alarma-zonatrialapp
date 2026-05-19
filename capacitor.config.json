@@ -1,0 +1,6 @@
+{
+  "appId": "com.zonatrialapp.alarma",
+  "appName": "Alarma ZonaTrial",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}

@@ -1,0 +1,118 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    user-select: none;
+}
+
+body {
+    background-color: #0f172a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 15px;
+}
+
+.alarm-container {
+    width: 100%;
+    max-width: 400px;
+    background-color: #1e293b;
+    border-radius: 24px;
+    padding: 25px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.clock-display {
+    background-color: #0f172a;
+    padding: 25px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+}
+
+#current-time {
+    color: #38bdf8;
+    font-size: 3rem;
+    font-weight: bold;
+    font-family: monospace;
+}
+
+.date-sub {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-top: 5px;
+}
+
+.setup-section {
+    margin-bottom: 20px;
+}
+
+.setup-section h3 {
+    color: #ffffff;
+    font-size: 1.2rem;
+    margin-bottom: 12px;
+}
+
+input[type="time"] {
+    background-color: #334155;
+    border: 2px solid #475569;
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 1.5rem;
+    border-radius: 12px;
+    outline: none;
+    text-align: center;
+    width: 80%;
+    margin-bottom: 15px;
+}
+
+.btn {
+    width: 100%;
+    border: none;
+    padding: 15px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.1s ease;
+}
+
+.sound-select {
+    background-color: #334155;
+    border: 2px solid #475569;
+    color: #ffffff;
+    padding: 10px 15px;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    outline: none;
+    width: 80%;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.btn-set {
+    background-color: #22c55e;
+    color: white;
+}
+
+.btn-set.active {
+    background-color: #ef4444;
+}
+
+.status-box {
+    color: #94a3b8;
+    font-size: 1rem;
+    margin-top: 10px;
+    font-style: italic;
+}
+
+.footer-credits {
+    text-align: center;
+    color: #64748b;
+    font-size: 0.8rem;
+    margin-top: 30px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+}

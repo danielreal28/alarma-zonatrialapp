@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alarma Pro - ZonaTrial</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="alarm-container">
+        <div class="clock-display">
+            <div id="current-time">00:00:00</div>
+            <div id="current-date" class="date-sub">Cargando fecha...</div>
+        </div>
+
+        <div class="setup-section">
+            <h3>Configurar Alarma</h3>
+            <div class="input-group">
+                <input type="time" id="alarm-time">
+            </div>
+
+            <div class="input-group">
+                <label for="alarm-sound" style="color: #94a3b8; display: block; margin-bottom: 8px; font-size: 0.9rem;">Selecciona el Tono:</label>
+                <select id="alarm-sound" class="sound-select">
+                    <option value="alarma1.mp3">Tono Clásico 1</option>
+                    <option value="alarma2.mp3">Tono Fuerte 2</option>
+                    <option value="alarma3.mp3">Tono Campanas 3</option>
+                    <option value="alarma4.mp3">Tono Alerta 4</option>
+                    <option value="alarma5.mp3">Tono Tecno 5</option>
+                    <option value="alarma6.mp3">Tono Suave 6</option>
+                    <option value="alarma7.mp3">Tono Melodía 7</option>
+                    <option value="alarma8.mp3">Tono Radio 8</option>
+                    <option value="alarma9.mp3">Tono Sirena 9</option>
+                    <option value="alarma10.mp3">Tono Épico 10</option>
+                </select>
+            </div>
+
+            <button id="btn-toggle" class="btn btn-set" onclick="toggleAlarm()">Activar Alarma</button>
+        </div>
+
+        <div id="alarm-status" class="status-box">Alarma desactivada</div>
+
+        <div class="footer-credits">
+            © 2026 zonatrialapp by DanielReal
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
