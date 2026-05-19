@@ -1,4 +1,5 @@
 name: Build Android APK
+
 on:
   push:
     branches:
@@ -33,15 +34,19 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar los 10 Tonos Forzando Minúsculas
+      - name: Inyectar Audios con Control Estricto
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
+          
+          # Buscamos cualquier archivo que empiece con 'a' o 'A' y termine en mp3
+          # Los copiamos asegurando el nombre exacto que espera la app de forma limpia
+          count=1
           for f in *.[mM][pP]3; do
-            if [ -f "$f" ]; then
-              # Convierte el nombre a minúsculas completas para cumplir la regla de Android
-              filename=$(echo "$f" | tr '[:upper:]' '[:lower:]')
-              cp "$f" "../android/app/src/main/res/raw/$filename"
+            if [ -f "$f" ] && [ $count -le 10 ]; then
+              cp "$f" "../android/app/src/main/res/raw/alarma$count.mp3"
+              echo "Inyectado: $f como alarma$count.mp3"
+              count=$((count+1))
             fi
           done
           cd ..
