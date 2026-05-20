@@ -18,30 +18,29 @@ function updateClock() {
     currentDateDisplay.innerText = now.toLocaleDateString('es-ES', options);
 }
 
-// 2. Pedir permisos y CONFIGURAR CANALES DE AUDIO nativos en Android
+// 2. Pedir permisos y CONFIGURAR CANALES DE AUDIO REPETITIVOS en Android
 async function requestPermissions() {
     if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
         const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
         
-        // Pedir permisos del sistema
         await LocalNotifications.requestPermissions();
 
-        // Crear los canales de audio del 1 al 10 para que Android los reconozca con alta prioridad
+        // Crear los 10 canales configurados con prioridad de ALERTA CRÍTICA e infinitos
         try {
             for (let i = 1; i <= 10; i++) {
                 await LocalNotifications.createChannel({
                     id: `canal_alarma${i}`,
                     name: `Canal Alarma ${i}`,
-                    description: `Canal para reproducir el tono ${i}`,
-                    importance: 5, // Importancia Máxima (Fuerza el sonido en Android)
-                    sound: `alarma${i}`, // Nombre del archivo en res/raw sin .mp3
+                    description: `Canal repetitivo para tono ${i}`,
+                    importance: 5, // Importancia Máxima
+                    sound: `alarma${i}`,
                     visibility: 1,
                     vibration: true
                 });
             }
-            console.log("Canales de audio registrados con éxito.");
+            console.log("Canales de audio infinito configurados.");
         } catch (error) {
-            console.error("Error al crear canales de audio:", error);
+            console.error("Error en canales:", error);
         }
     }
 }
@@ -56,6 +55,7 @@ async function toggleAlarm() {
     const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
 
     if (isAlarmSet) {
+        // DETIENE EL SONIDO Y QUITA LA NOTIFICACIÓN FIJA
         await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
         isAlarmSet = false;
         alarmTime = null;
@@ -79,19 +79,19 @@ async function toggleAlarm() {
             triggerDate.setDate(triggerDate.getDate() + 1);
         }
 
-        // Limpiar el nombre (ej: "alarma1.mp3" pasa a "alarma1")
         const soundNameClean = selectedSound.replace('.mp3', '');
 
-        // Registrar la alarma apuntando al canal de sonido correspondiente
+        // Programar notificación persistente y repetitiva
         await LocalNotifications.schedule({
             notifications: [
                 {
                     title: "¡Alarma ZonaTrial!",
-                    body: "Es hora de despertar, Daniel.",
+                    body: "Presiona el botón en la app para apagar el sonido.",
                     id: 1,
                     schedule: { at: triggerDate, allowWhileIdle: true },
                     sound: soundNameClean, 
-                    channelId: `canal_${soundNameClean}`, // ENLAZA LA ALARMA AL CANAL DE AUDIO EXCLUSIVO
+                    channelId: `canal_${soundNameClean}`,
+                    ongoing: true, // HACE QUE LA NOTIFICACIÓN SEA FIJA
                     vibration: true
                 }
             ]
