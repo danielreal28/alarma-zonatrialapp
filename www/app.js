@@ -1,111 +1,106 @@
 let alarmTime = null;
 let isAlarmSet = false;
-let audioPlayer = null; // Reproductor nativo para forzar el bucle infinito
-let checkInterval = null; // Verificador de hora segundo a segundo
 
 const currentTimeDisplay = document.getElementById('current-time');
 const currentDateDisplay = document.getElementById('current-date');
 const alarmStatus = document.getElementById('alarm-status');
 const btnToggle = document.getElementById('btn-toggle');
 
-// 1. Reloj en tiempo real y verificador de alarma
+// 1. Reloj en tiempo real
 function updateClock() {
     const now = new Date();
     let hours = String(now.getHours()).padStart(2, '0');
     let minutes = String(now.getMinutes()).padStart(2, '0');
     let seconds = String(now.getSeconds()).padStart(2, '0');
-    const timeString = `${hours}:${minutes}`;
-    
     currentTimeDisplay.innerText = `${hours}:${minutes}:${seconds}`;
     
     const options = { weekday: 'long', day: 'numeric', month: 'long' };
     currentDateDisplay.innerText = now.toLocaleDateString('es-ES', options);
-
-    // Si la alarma está activa y coincide el minuto exacto con el segundo 00
-    if (isAlarmSet && alarmTime === timeString && now.getSeconds() === 0) {
-        dispararAlarmaEfectiva();
-    }
 }
 
-// 2. Pedir permisos iniciales de notificación para el sistema
+// 2. Pedir permisos y configurar canales de alta prioridad
 async function requestPermissions() {
     if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
         const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
+        
         await LocalNotifications.requestPermissions();
+
+        try {
+            // Crear los 10 canales indicándole a Android que son de importancia máxima
+            for (let i = 1; i <= 10; i++) {
+                await LocalNotifications.createChannel({
+                    id: `canal_alarma${i}`,
+                    name: `Canal Alarma ${i}`,
+                    description: `Canal para tono ${i}`,
+                    importance: 5, // Máxima prioridad (Suena aunque esté bloqueado)
+                    sound: `alarma${i}`, // Nombre del archivo mp3 en res/raw
+                    visibility: 1, // Visible en pantalla de bloqueo
+                    vibration: true
+                });
+            }
+            console.log("Canales nativos configurados con éxito.");
+        } catch (error) {
+            console.error("Error en canales nativos:", error);
+        }
     }
 }
 
-// 3. El Motor que hace sonar el Bucle Infinito
-function dispararAlarmaEfectiva() {
-    const selectedSound = document.getElementById('alarm-sound').value;
-    
-    // Si ya está sonando algo, lo detenemos primero
-    if (audioPlayer) {
-        audioPlayer.pause();
+// 3. Activar / Desactivar Alarma
+async function toggleAlarm() {
+    if (!window.Capacitor || !window.Capacitor.Plugins.LocalNotifications) {
+        alert("El modo nativo se activará en el APK.");
+        return;
     }
 
-    // Cargamos el audio directamente desde la carpeta web raíz
-    // Al usar el elemento Audio nativo con loop=true, Android no puede cortar el sonido
-    audioPlayer = new Audio(selectedSound);
-    audioPlayer.loop = true; 
-    audioPlayer.volume = 1.0;
-    
-    // Lanzamos la reproducción
-    audioPlayer.play().catch(err => {
-        console.error("Error reproduciendo audio en bucle: ", err);
-        // Respaldo por si Android bloquea el inicio directo
-        document.body.click(); 
-    });
+    const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
 
-    // Lanzar notificación visual flotante de respaldo
-    if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
-        window.Capacitor.Plugins.LocalNotifications.schedule({
-            notifications: [{
-                title: "🚨 ¡Alarma ZonaTrial!",
-                body: "Entra a la aplicación para detener el sonido en bucle.",
-                id: 1,
-                ongoing: true
-            }]
-        });
-    }
-
-    if (alarmStatus) alarmStatus.innerText = "¡Sonando en bucle infinito!";
-}
-
-// 4. Detener todo por completo
-async function apagarAlarmaManual() {
-    // Apagar el reproductor de sonido continuo
-    if (audioPlayer) {
-        audioPlayer.pause();
-        audioPlayer.currentTime = 0;
-        audioPlayer = null;
-    }
-
-    // Cancelar notificaciones activas
-    if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
-        await window.Capacitor.Plugins.LocalNotifications.cancel({ notifications: [{ id: 1 }] });
-    }
-
-    isAlarmSet = false;
-    alarmTime = null;
-    
-    if (btnToggle) {
+    if (isAlarmSet) {
+        // Cancela la alarma y detiene el sonido
+        await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+        isAlarmSet = false;
+        alarmTime = null;
         btnToggle.innerText = "Activar Alarma";
         btnToggle.classList.remove('active');
-    }
-    if (alarmStatus) alarmStatus.innerText = "Alarma desactivada";
-}
-
-// 5. Activar/Desactivar desde el botón principal
-async function toggleAlarm() {
-    if (isAlarmSet) {
-        await apagarAlarmaManual();
+        alarmStatus.innerText = "Alarma desactivada";
     } else {
         const inputTime = document.getElementById('alarm-time').value;
         if (!inputTime) {
             alert("Selecciona una hora válida primero.");
             return;
         }
+
+        const selectedSound = document.getElementById('alarm-sound').value;
+        const [hours, minutes] = inputTime.split(':');
+        const now = new Date();
+        const triggerDate = new Date();
+        triggerDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+
+        // Si la hora ya pasó hoy, se programa para mañana
+        if (triggerDate <= now) {
+            triggerDate.setDate(triggerDate.getDate() + 1);
+        }
+
+        const soundNameClean = selectedSound.replace('.mp3', '');
+
+        // Programar la alerta nativa del sistema
+        await LocalNotifications.schedule({
+            notifications: [
+                {
+                    title: "🚨 ¡Alarma ZonaTrial!",
+                    body: "Es hora de despertar. Entra a la app para apagar el sonido.",
+                    id: 1,
+                    schedule: { at: triggerDate, allowWhileIdle: true },
+                    sound: soundNameClean, 
+                    channelId: `canal_${soundNameClean}`,
+                    ongoing: true, // No se puede borrar deslizando el dedo
+                    vibration: true,
+                    // TRUCO DE BUCLE NATIVO: Le dice al sistema operativo que repita el sonido
+                    soundConfig: {
+                        loop: true
+                    }
+                }
+            ]
+        });
 
         alarmTime = inputTime;
         isAlarmSet = true;
@@ -118,7 +113,6 @@ async function toggleAlarm() {
     }
 }
 
-// Iniciar los bucles de tiempo del sistema web
 setInterval(updateClock, 1000);
 updateClock();
 document.addEventListener('DOMContentLoaded', requestPermissions);
