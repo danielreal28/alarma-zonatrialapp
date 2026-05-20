@@ -34,15 +34,17 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar y Corregir Nombres de Audios
+      - name: Inyectar y Limpiar Nombres de Audios (Forzar Minúsculas Limpias)
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
           count=1
+          # Recorremos todos los archivos mp3 sin importar si están en mayúsculas o minúsculas
           for f in *.[mM][pP]3; do
             if [ -f "$f" ] && [ $count -le 10 ]; then
+              # Copiamos forzando un nombre ultra limpio y en minúsculas para que Android no chille
               cp "$f" "../android/app/src/main/res/raw/alarma$count.mp3"
-              echo "Inyectado: $f -> alarma$count.mp3"
+              echo "Audio inyectado con éxito: alarma$count.mp3"
               count=$((count+1))
             fi
           done
@@ -53,11 +55,12 @@ jobs:
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
           sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
 
-      - name: Modificar Actividad Principal para Forzar Encendido sobre Bloqueo
+      - name: Modificar Actividad Principal para Forzar Encendido sobre Bloqueo (Ruta Corregida)
         run: |
-          MAIN_ACTIVITY="android/app/src/main/java/com/zonatrialapp.alarma/MainActivity.java"
-          # Aseguramos la ruta correcta de la actividad nativa
+          # CORRECCIÓN DE LA RUTA: Estructura de carpetas exacta de Java para Android
           mkdir -p android/app/src/main/java/com/zonatrialapp/alarma
+          MAIN_ACTIVITY="android/app/src/main/java/com/zonatrialapp/alarma/MainActivity.java"
+          
           cat << 'EOF' > $MAIN_ACTIVITY
           package com.zonatrialapp.alarma;
 
