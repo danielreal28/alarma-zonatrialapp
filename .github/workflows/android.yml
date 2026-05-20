@@ -34,7 +34,7 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar Tonos y Forzar Bucle Continuo por Atributo
+      - name: Inyectar Tonos y Forzar Categoría de Alarma
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
@@ -46,23 +46,14 @@ jobs:
             fi
           done
           cd ..
-          
-          # HACK DEFINTIVO DE SONIDO CORRIDO EN ANDROID:
-          # Registra las propiedades del recurso de sonido nativo obligando al sistema a activar el loop
-          mkdir -p android/app/src/main/res/values
-          cat << 'EOF' > android/app/src/main/res/values/raw_properties.xml
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <bool name="android.intent.extra.alarm.LOOP">true</bool>
-          </resources>
-          EOF
 
-      - name: Inyectar Permisos Críticos de Pantalla y Alarma
+      - name: Inyectar Permisos de Alarma Crítica en AndroidManifest
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
+          # Agrega permisos para bypass de silencio, alertas de pantalla completa y vibración infinita
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
 
-      - name: Modificar Actividad Principal para Forzar Encendido sobre Bloqueo
+      - name: Configurar Actividad Principal para Saltar Bloqueo Nativamente
         run: |
           MAIN_ACTIVITY="android/app/src/main/java/com/zonatrialapp/alarma/MainActivity.java"
           cat << 'EOF' > $MAIN_ACTIVITY
@@ -78,6 +69,7 @@ jobs:
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
                   
+                  // Forzar la prioridad de despliegue sobre el Lockscreen de Android
                   if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
                       setShowWhenLocked(true);
                       setTurnScreenOn(true);
