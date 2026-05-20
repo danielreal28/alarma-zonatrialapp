@@ -27,14 +27,16 @@ jobs:
       - name: Instalar Dependencias del Proyecto
         run: |
           npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/local-notifications
+          npm install @capacitor/cli @capacitor/core @capacitor/android
+          # Instalamos el plugin especializado para bucles y alarmas reales
+          npm install capacitor-plugin-alarm-manager
 
       - name: Crear e Inicializar Proyecto Nativo Real
         run: |
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar Tonos y Forzar Categoría de Alarma
+      - name: Inyectar Tonos en la Carpeta de Recursos
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
@@ -47,41 +49,12 @@ jobs:
           done
           cd ..
 
-      - name: Inyectar Permisos de Alarma Crítica en AndroidManifest
+      - name: Configurar Permisos y Servicios de Alarma Reales
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          # Agrega permisos para bypass de silencio, alertas de pantalla completa y vibración infinita
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
-
-      - name: Configurar Actividad Principal para Saltar Bloqueo Nativamente
-        run: |
-          MAIN_ACTIVITY="android/app/src/main/java/com/zonatrialapp/alarma/MainActivity.java"
-          cat << 'EOF' > $MAIN_ACTIVITY
-          package com.zonatrialapp.alarma;
-
-          import android.os.Bundle;
-          import android.os.Build;
-          import android.view.WindowManager;
-          import com.getcapacitor.BridgeActivity;
-
-          public class MainActivity extends BridgeActivity {
-              @Override
-              protected void onCreate(Bundle savedInstanceState) {
-                  super.onCreate(savedInstanceState);
-                  
-                  // Forzar la prioridad de despliegue sobre el Lockscreen de Android
-                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-                      setShowWhenLocked(true);
-                      setTurnScreenOn(true);
-                  } else {
-                      getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                              | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                              | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
-                              | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
-                  }
-              }
-          }
-          EOF
+          
+          # 1. Inyectar los permisos necesarios para servicios en segundo plano y alarmas continuas
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />' $MANIFEST_PATH
 
       - name: Forzar Sincronización Completa
         run: npx cap sync android
