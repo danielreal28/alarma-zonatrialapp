@@ -18,34 +18,70 @@ function updateClock() {
     currentDateDisplay.innerText = now.toLocaleDateString('es-ES', options);
 }
 
-// 2. Pedir permisos y CONFIGURAR CANALES DE AUDIO REPETITIVOS en Android
+// 2. Pedir permisos, CONFIGURAR CANALES e inyectar botones nativos de bloqueo
 async function requestPermissions() {
     if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
         const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
         
         await LocalNotifications.requestPermissions();
 
-        // Crear los 10 canales configurados con prioridad de ALERTA CRÍTICA e infinitos
+        // Registrar los botones de acción rápidos para la pantalla de bloqueo
         try {
+            await LocalNotifications.registerActionTypes({
+                types: [
+                    {
+                        id: 'ALARMA_ACCIONES',
+                        actions: [
+                            {
+                                id: 'desactivar',
+                                title: '🔴 APAGAR ALARMA',
+                                foreground: true // Abre o activa la app para limpiar el proceso
+                            }
+                        ]
+                    }
+                ]
+            });
+
+            // Crear los 10 canales configurados para repetir sonido
             for (let i = 1; i <= 10; i++) {
                 await LocalNotifications.createChannel({
                     id: `canal_alarma${i}`,
                     name: `Canal Alarma ${i}`,
                     description: `Canal repetitivo para tono ${i}`,
-                    importance: 5, // Importancia Máxima
+                    importance: 5, // Máxima prioridad en Android
                     sound: `alarma${i}`,
-                    visibility: 1,
+                    visibility: 1, // Visible en pantalla de bloqueo
                     vibration: true
                 });
             }
-            console.log("Canales de audio infinito configurados.");
+            console.log("Configuración nativa de canales lista.");
         } catch (error) {
-            console.error("Error en canales:", error);
+            console.error("Error en configuración nativa:", error);
         }
+
+        // ESCUCHAR CUANDO SE TOCA EL BOTÓN "APAGAR ALARMA" DESDE LA PANTALLA DE BLOQUEO
+        LocalNotifications.addListener('localNotificationActionPerformed', async (notificationAction) => {
+            if (notificationAction.actionId === 'desactivar') {
+                await apagarAlarmaManual();
+            }
+        });
     }
 }
 
-// 3. Activar/Desactivar alarma con el sistema nativo de Android
+// Función central para apagar la alarma y limpiar todo
+async function apagarAlarmaManual() {
+    const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
+    await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
+    isAlarmSet = false;
+    alarmTime = null;
+    if(btnToggle) {
+        btnToggle.innerText = "Activar Alarma";
+        btnToggle.classList.remove('active');
+    }
+    if(alarmStatus) alarmStatus.innerText = "Alarma desactivada";
+}
+
+// 3. Activar/Desactivar alarma
 async function toggleAlarm() {
     if (!window.Capacitor || !window.Capacitor.Plugins.LocalNotifications) {
         alert("El modo de segundo plano nativo se activará cuando compiles la app como APK.");
@@ -55,13 +91,7 @@ async function toggleAlarm() {
     const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
 
     if (isAlarmSet) {
-        // DETIENE EL SONIDO Y QUITA LA NOTIFICACIÓN FIJA
-        await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
-        isAlarmSet = false;
-        alarmTime = null;
-        btnToggle.innerText = "Activar Alarma";
-        btnToggle.classList.remove('active');
-        alarmStatus.innerText = "Alarma desactivada";
+        await apagarAlarmaManual();
     } else {
         const inputTime = document.getElementById('alarm-time').value;
         if (!inputTime) {
@@ -81,17 +111,18 @@ async function toggleAlarm() {
 
         const soundNameClean = selectedSound.replace('.mp3', '');
 
-        // Programar notificación persistente y repetitiva
+        // Programar alarma con sonido infinito en bucle y botón en bloqueo
         await LocalNotifications.schedule({
             notifications: [
                 {
-                    title: "¡Alarma ZonaTrial!",
-                    body: "Presiona el botón en la app para apagar el sonido.",
+                    title: "🚨 ¡Alarma ZonaTrial!",
+                    body: "Toca abajo para detener el sonido de inmediato.",
                     id: 1,
                     schedule: { at: triggerDate, allowWhileIdle: true },
                     sound: soundNameClean, 
                     channelId: `canal_${soundNameClean}`,
-                    ongoing: true, // HACE QUE LA NOTIFICACIÓN SEA FIJA
+                    actionTypeId: 'ALARMA_ACCIONES', // INYECTA EL BOTÓN EN LA PANTALLA DE BLOQUEO
+                    ongoing: true, // Bloquea que el usuario borre la notificación deslizando
                     vibration: true
                 }
             ]
