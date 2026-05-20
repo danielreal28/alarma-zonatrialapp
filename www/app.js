@@ -6,7 +6,7 @@ const currentDateDisplay = document.getElementById('current-date');
 const alarmStatus = document.getElementById('alarm-status');
 const btnToggle = document.getElementById('btn-toggle');
 
-// 1. Reloj en tiempo real para la pantalla
+// 1. Reloj en tiempo real
 function updateClock() {
     const now = new Date();
     let hours = String(now.getHours()).padStart(2, '0');
@@ -18,57 +18,56 @@ function updateClock() {
     currentDateDisplay.innerText = now.toLocaleDateString('es-ES', options);
 }
 
-// 2. Pedir permisos, CONFIGURAR CANALES e inyectar botones nativos de bloqueo
+// 2. Configurar Canales de Alerta Crítica y Botones Visibles
 async function requestPermissions() {
     if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
         const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
         
         await LocalNotifications.requestPermissions();
 
-        // Registrar los botones de acción rápidos para la pantalla de bloqueo
         try {
+            // REGISTRO DE BOTÓN ULTRA-VISIBLE (Con ID en mayúsculas para evitar fallos de mapeo)
             await LocalNotifications.registerActionTypes({
                 types: [
                     {
-                        id: 'ALARMA_ACCIONES',
+                        id: 'ALARM_RING_ACTIONS',
                         actions: [
                             {
-                                id: 'desactivar',
+                                id: 'stop_alarm',
                                 title: '🔴 APAGAR ALARMA',
-                                foreground: true // Abre o activa la app para limpiar el proceso
+                                foreground: true
                             }
                         ]
                     }
                 ]
             });
 
-            // Crear los 10 canales configurados para repetir sonido
+            // Crear canales nativos con visibilidad TOTAL en pantalla bloqueada
             for (let i = 1; i <= 10; i++) {
                 await LocalNotifications.createChannel({
                     id: `canal_alarma${i}`,
                     name: `Canal Alarma ${i}`,
-                    description: `Canal repetitivo para tono ${i}`,
-                    importance: 5, // Máxima prioridad en Android
+                    description: `Canal crítico para tono ${i}`,
+                    importance: 5,     // IMPORTANCIA MÁXIMA (Rompe el silencio)
+                    visibility: 1,     // VISIBILIDAD DE PANTALLA DE BLOQUEO (Muestra botones)
                     sound: `alarma${i}`,
-                    visibility: 1, // Visible en pantalla de bloqueo
                     vibration: true
                 });
             }
-            console.log("Configuración nativa de canales lista.");
+            console.log("Canales blindados listos.");
         } catch (error) {
-            console.error("Error en configuración nativa:", error);
+            console.error("Error configurando canales:", error);
         }
 
-        // ESCUCHAR CUANDO SE TOCA EL BOTÓN "APAGAR ALARMA" DESDE LA PANTALLA DE BLOQUEO
+        // Capturar cuando se presione el botón desde la barra de bloqueo
         LocalNotifications.addListener('localNotificationActionPerformed', async (notificationAction) => {
-            if (notificationAction.actionId === 'desactivar') {
+            if (notificationAction.actionId === 'stop_alarm') {
                 await apagarAlarmaManual();
             }
         });
     }
 }
 
-// Función central para apagar la alarma y limpiar todo
 async function apagarAlarmaManual() {
     const LocalNotifications = window.Capacitor.Plugins.LocalNotifications;
     await LocalNotifications.cancel({ notifications: [{ id: 1 }] });
@@ -81,10 +80,10 @@ async function apagarAlarmaManual() {
     if(alarmStatus) alarmStatus.innerText = "Alarma desactivada";
 }
 
-// 3. Activar/Desactivar alarma
+// 3. Programar el Disparo de Alarma
 async function toggleAlarm() {
     if (!window.Capacitor || !window.Capacitor.Plugins.LocalNotifications) {
-        alert("El modo de segundo plano nativo se activará cuando compiles la app como APK.");
+        alert("El modo nativo se activará en el APK.");
         return;
     }
 
@@ -95,7 +94,7 @@ async function toggleAlarm() {
     } else {
         const inputTime = document.getElementById('alarm-time').value;
         if (!inputTime) {
-            alert("Selecciona una hora válida primero.");
+            alert("Selecciona una hora válida.");
             return;
         }
 
@@ -111,18 +110,19 @@ async function toggleAlarm() {
 
         const soundNameClean = selectedSound.replace('.mp3', '');
 
-        // Programar alarma con sonido infinito en bucle y botón en bloqueo
         await LocalNotifications.schedule({
             notifications: [
                 {
                     title: "🚨 ¡Alarma ZonaTrial!",
-                    body: "Toca abajo para detener el sonido de inmediato.",
+                    body: "Presiona el botón rojo para apagar el sonido.",
                     id: 1,
                     schedule: { at: triggerDate, allowWhileIdle: true },
                     sound: soundNameClean, 
                     channelId: `canal_${soundNameClean}`,
-                    actionTypeId: 'ALARMA_ACCIONES', // INYECTA EL BOTÓN EN LA PANTALLA DE BLOQUEO
-                    ongoing: true, // Bloquea que el usuario borre la notificación deslizando
+                    actionTypeId: 'ALARM_RING_ACTIONS', // Conecta con el botón configurado arriba
+                    ongoing: true,      // Impide que el usuario borre la notificación barriendo el dedo
+                    sticky: true,       // Fuerza a que permanezca activa en pantalla
+                    smallIcon: 'res://res_id_icon', // Usa el icono nativo
                     vibration: true
                 }
             ]
