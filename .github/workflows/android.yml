@@ -27,16 +27,14 @@ jobs:
       - name: Instalar Dependencias del Proyecto
         run: |
           npm install
-          npm install @capacitor/cli @capacitor/core @capacitor/android
-          # Instalamos el plugin especializado para bucles y alarmas reales
-          npm install capacitor-plugin-alarm-manager
+          npm install @capacitor/cli @capacitor/core @capacitor/android @capacitor/local-notifications
 
       - name: Crear e Inicializar Proyecto Nativo Real
         run: |
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar Tonos en la Carpeta de Recursos
+      - name: Inyectar y Corregir Nombres de Audios
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
@@ -44,17 +42,47 @@ jobs:
           for f in *.[mM][pP]3; do
             if [ -f "$f" ] && [ $count -le 10 ]; then
               cp "$f" "../android/app/src/main/res/raw/alarma$count.mp3"
+              echo "Inyectado: $f -> alarma$count.mp3"
               count=$((count+1))
             fi
           done
           cd ..
 
-      - name: Configurar Permisos y Servicios de Alarma Reales
+      - name: Inyectar Permisos Críticos de Pantalla y Alarma
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          
-          # 1. Inyectar los permisos necesarios para servicios en segundo plano y alarmas continuas
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />' $MANIFEST_PATH
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
+
+      - name: Modificar Actividad Principal para Forzar Encendido sobre Bloqueo
+        run: |
+          MAIN_ACTIVITY="android/app/src/main/java/com/zonatrialapp.alarma/MainActivity.java"
+          # Aseguramos la ruta correcta de la actividad nativa
+          mkdir -p android/app/src/main/java/com/zonatrialapp/alarma
+          cat << 'EOF' > $MAIN_ACTIVITY
+          package com.zonatrialapp.alarma;
+
+          import android.os.Bundle;
+          import android.os.Build;
+          import android.view.WindowManager;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                      setShowWhenLocked(true);
+                      setTurnScreenOn(true);
+                  } else {
+                      getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                              | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                              | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+                              | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+                  }
+              }
+          }
+          EOF
 
       - name: Forzar Sincronización Completa
         run: npx cap sync android
