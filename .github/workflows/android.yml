@@ -34,7 +34,7 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar y Corregir Nombres de Audios a la Fuerza
+      - name: Inyectar Tonos y Forzar Atributo de Bucle Infinito Nativo
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
@@ -42,11 +42,19 @@ jobs:
           for f in *.[mM][pP]3; do
             if [ -f "$f" ] && [ $count -le 10 ]; then
               cp "$f" "../android/app/src/main/res/raw/alarma$count.mp3"
-              echo "Corregido e Inyectado: $f -> alarma$count.mp3"
               count=$((count+1))
             fi
           done
           cd ..
+          
+          # Crear configuración nativa para obligar a Android a tratar los audios raw en bucle infinito
+          mkdir -p android/app/src/main/res/xml
+          cat << 'EOF' > android/app/src/main/res/xml/bucle_config.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <item name="alarma" type="raw" loop="true" />
+          </resources>
+          EOF
 
       - name: Inyectar Permisos Críticos de Pantalla y Alarma
         run: |
