@@ -34,7 +34,7 @@ jobs:
           npx cap init "Alarma ZonaTrial" "com.zonatrialapp.alarma" --web-dir=www
           npx cap add android
 
-      - name: Inyectar Tonos y Forzar Atributo de Bucle Infinito Nativo
+      - name: Inyectar Tonos y Forzar Bucle Continuo por Atributo
         run: |
           mkdir -p android/app/src/main/res/raw
           cd www
@@ -47,19 +47,20 @@ jobs:
           done
           cd ..
           
-          # Crear configuración nativa para obligar a Android a tratar los audios raw en bucle infinito
-          mkdir -p android/app/src/main/res/xml
-          cat << 'EOF' > android/app/src/main/res/xml/bucle_config.xml
+          # HACK DEFINTIVO DE SONIDO CORRIDO EN ANDROID:
+          # Registra las propiedades del recurso de sonido nativo obligando al sistema a activar el loop
+          mkdir -p android/app/src/main/res/values
+          cat << 'EOF' > android/app/src/main/res/values/raw_properties.xml
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <item name="alarma" type="raw" loop="true" />
+              <bool name="android.intent.extra.alarm.LOOP">true</bool>
           </resources>
           EOF
 
       - name: Inyectar Permisos Críticos de Pantalla y Alarma
         run: |
           MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.VIBRATE" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.TURN_SCREEN_ON" />\n    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />' $MANIFEST_PATH
 
       - name: Modificar Actividad Principal para Forzar Encendido sobre Bloqueo
         run: |
